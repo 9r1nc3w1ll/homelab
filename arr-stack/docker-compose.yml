@@ -116,6 +116,11 @@ services:
       PGID: ${PGID}
       TZ: ${TZ}
       UMASK: "002"
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
     volumes:
       - ${DATA_ROOT:-./data}/config/jellyfin:/config
       - ${DATA_ROOT:-./data}/media:/data

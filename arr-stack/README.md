@@ -69,6 +69,26 @@ Inside containers:
 - **qBittorrent:** `/downloads`
 - **Jellyfin:** `/config`, `/data` (host `data/media` → `/data`; use e.g. `/data/tv` and `/data/movies` as library paths in the UI)
 
+## Jellyfin hardware transcoding (AMD / GMKtec-style mini PC)
+
+The **Jellyfin** service passes **`/dev/dri`** into the container and adds the **`video`** and **`render`** groups so VAAPI can use the AMD GPU (integrated or discrete).
+
+**On the host (before expecting HW transcode to work):**
+
+1. Install AMD/Mesa VAAPI userspace for your distro (names vary), for example on Debian/Ubuntu-family systems you often need packages such as **`mesa-va-drivers`**, **`vainfo`** (from `vainfo` or `mesa-utils`), and ensure the AMDGPU kernel driver is loaded (`amdgpu` for modern AMD).
+2. Confirm devices exist: `ls -la /dev/dri` (you should see `card0`, `renderD128`, etc.).
+3. Run **`vainfo`** on the host and confirm a non-empty “vainfo: VA-API version” / driver section.
+
+**In Jellyfin (Dashboard → Playback → Transcoding):**
+
+- Enable **hardware acceleration**.
+- Choose **Video Acceleration API (VAAPI)**.
+- **VA API device** is typically `/dev/dri/renderD128` (use the render node `vainfo` reports if different).
+
+If `group_add` for **`render`** fails on an unusual host (no `render` group), remove that line in `docker-compose.yml` or align with your distro’s DRI group names.
+
+For HDR **tone-mapping** extras on AMD, see LinuxServer **Docker Mods** for Jellyfin on [mods.linuxserver.io](https://mods.linuxserver.io/) (optional; base VAAPI encode/decode works without mods).
+
 ## App wiring
 
 - **Sonarr / Radarr → download client:** host **`gluetun`**, port **8080**, URL `http://gluetun:8080` (matches `WEBUI_PORT` in Compose).
