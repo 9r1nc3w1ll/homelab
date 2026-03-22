@@ -1,0 +1,28 @@
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./homeassistant:/config
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    environment:
+      - TZ=UTC+1
+
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+
+volumes:
+  portainer_data:
+
