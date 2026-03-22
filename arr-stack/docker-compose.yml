@@ -1,0 +1,158 @@
+name: arr-stack
+
+# Run from this directory: docker compose up -d
+# Copy .env.example to .env and set VPN + paths. qBittorrent Web UI is on ${QBIT_WEBUI_PORT:-8080}.
+# Download client URL in Sonarr/Radarr: http://gluetun:8080 (same port as WEBUI_PORT below).
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: arr-gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "${QBIT_WEBUI_PORT:-8080}:8080/tcp"
+      - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/tcp"
+      - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/udp"
+    env_file:
+      - .env
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: arr-qbittorrent
+    network_mode: service:gluetun
+    depends_on:
+      - gluetun
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      WEBUI_PORT: "8080"
+      UMASK: "002"
+    volumes:
+      - ${DATA_ROOT:-./data}/downloads:/downloads
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: arr-prowlarr
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      UMASK: "002"
+    volumes:
+      - ${DATA_ROOT:-./data}/config/prowlarr:/config
+    ports:
+      - "${PROWLARR_PORT:-9696}:9696"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: arr-sonarr
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      UMASK: "002"
+    volumes:
+      - ${DATA_ROOT:-./data}/config/sonarr:/config
+      - ${DATA_ROOT:-./data}/media/tv:/tv
+      - ${DATA_ROOT:-./data}/downloads:/downloads
+    ports:
+      - "${SONARR_PORT:-8989}:8989"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: arr-radarr
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      UMASK: "002"
+    volumes:
+      - ${DATA_ROOT:-./data}/config/radarr:/config
+      - ${DATA_ROOT:-./data}/media/movies:/movies
+      - ${DATA_ROOT:-./data}/downloads:/downloads
+    ports:
+      - "${RADARR_PORT:-7878}:7878"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: arr-bazarr
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      UMASK: "002"
+    volumes:
+      - ${DATA_ROOT:-./data}/config/bazarr:/config
+      - ${DATA_ROOT:-./data}/media/movies:/movies
+      - ${DATA_ROOT:-./data}/media/tv:/tv
+    ports:
+      - "${BAZARR_PORT:-6767}:6767"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: arr-jellyfin
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      UMASK: "002"
+    volumes:
+      - ${DATA_ROOT:-./data}/config/jellyfin:/config
+      - ${DATA_ROOT:-./data}/media:/data
+    ports:
+      - "${JELLYFIN_HTTP:-8096}:8096"
+      - "${JELLYFIN_HTTPS:-8920}:8920"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: arr-seerr
+    init: true
+    environment:
+      TZ: ${TZ}
+      LOG_LEVEL: ${SEERR_LOG_LEVEL:-info}
+    volumes:
+      - ${DATA_ROOT:-./data}/seerr:/app/config
+    ports:
+      - "${SEERR_PORT:-5055}:5055"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: arr-flaresolverr
+    environment:
+      TZ: ${TZ}
+      LOG_LEVEL: ${FLARESOLVERR_LOG_LEVEL:-info}
+    ports:
+      - "${FLARESOLVERR_PORT:-8191}:8191"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+networks:
+  arr_net:
+    driver: bridge
