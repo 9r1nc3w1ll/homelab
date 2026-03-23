@@ -1,0 +1,2 @@
+[tasks]
+start = "docker compose -p arr-stack up -d"

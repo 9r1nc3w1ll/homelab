@@ -1,33 +1,35 @@
 name: arr-stack
 
 # Run from this directory: docker compose up -d
-# Copy .env.example to .env and set VPN + paths. qBittorrent Web UI is on ${QBIT_WEBUI_PORT:-8080}.
-# Download client URL in Sonarr/Radarr: http://gluetun:8080 (same port as WEBUI_PORT below).
+# Copy .env.example to .env and set paths. qBittorrent Web UI is on ${QBIT_WEBUI_PORT:-8080}.
+# Download client URL in Sonarr/Radarr: http://qbittorrent:8080 (same port as WEBUI_PORT below).
+# Gluetun (VPN) is temporarily disabled; uncomment the gluetun service and switch qbittorrent
+# back to network_mode: service:gluetun + depends_on: gluetun, remove qbittorrent ports/networks.
 
 services:
-  gluetun:
-    image: qmcgaw/gluetun:latest
-    container_name: arr-gluetun
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    ports:
-      - "${QBIT_WEBUI_PORT:-8080}:8080/tcp"
-      - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/tcp"
-      - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/udp"
-    env_file:
-      - .env
-    networks:
-      - arr_net
-    restart: unless-stopped
+  # gluetun:
+  #   image: qmcgaw/gluetun:latest
+  #   container_name: arr-gluetun
+  #   cap_add:
+  #     - NET_ADMIN
+  #   devices:
+  #     - /dev/net/tun:/dev/net/tun
+  #   ports:
+  #     - "${QBIT_WEBUI_PORT:-8080}:8080/tcp"
+  #     - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/tcp"
+  #     - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/udp"
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - arr_net
+  #   restart: unless-stopped
 
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: arr-qbittorrent
-    network_mode: service:gluetun
-    depends_on:
-      - gluetun
+    # network_mode: service:gluetun
+    # depends_on:
+    #   - gluetun
     environment:
       PUID: ${PUID}
       PGID: ${PGID}
@@ -36,6 +38,12 @@ services:
       UMASK: "002"
     volumes:
       - ${DATA_ROOT:-./data}/downloads:/downloads
+    ports:
+      - "${QBIT_WEBUI_PORT:-8080}:8080/tcp"
+      - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/tcp"
+      - "${TORRENT_PORT:-6881}:${TORRENT_PORT:-6881}/udp"
+    networks:
+      - arr_net
     restart: unless-stopped
 
   prowlarr:
@@ -64,8 +72,9 @@ services:
       UMASK: "002"
     volumes:
       - ${DATA_ROOT:-./data}/config/sonarr:/config
-      - ${DATA_ROOT:-./data}/media/tv:/tv
+      - ${DATA_ROOT:-./data}/tv:/tv
       - ${DATA_ROOT:-./data}/downloads:/downloads
+      - ${OLD_DATA_ROOT}:/data/old-media
     ports:
       - "${SONARR_PORT:-8989}:8989"
     networks:
@@ -82,8 +91,9 @@ services:
       UMASK: "002"
     volumes:
       - ${DATA_ROOT:-./data}/config/radarr:/config
-      - ${DATA_ROOT:-./data}/media/movies:/movies
+      - ${DATA_ROOT:-./data}/movies:/movies
       - ${DATA_ROOT:-./data}/downloads:/downloads
+      - ${OLD_DATA_ROOT}:/data/old-media
     ports:
       - "${RADARR_PORT:-7878}:7878"
     networks:
@@ -100,8 +110,8 @@ services:
       UMASK: "002"
     volumes:
       - ${DATA_ROOT:-./data}/config/bazarr:/config
-      - ${DATA_ROOT:-./data}/media/movies:/movies
-      - ${DATA_ROOT:-./data}/media/tv:/tv
+      - ${DATA_ROOT:-./data}/movies:/movies
+      - ${DATA_ROOT:-./data}/tv:/tv
     ports:
       - "${BAZARR_PORT:-6767}:6767"
     networks:
@@ -120,10 +130,10 @@ services:
       - /dev/dri:/dev/dri
     group_add:
       - video
-      - render
+      - 105 # - render
     volumes:
       - ${DATA_ROOT:-./data}/config/jellyfin:/config
-      - ${DATA_ROOT:-./data}/media:/data
+      - ${DATA_ROOT:-./data}:/data
     ports:
       - "${JELLYFIN_HTTP:-8096}:8096"
       - "${JELLYFIN_HTTPS:-8920}:8920"

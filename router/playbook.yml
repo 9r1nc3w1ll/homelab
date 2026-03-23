@@ -44,35 +44,35 @@
         state: directory
         mode: '0755'
 
-    - name: Copy docker-compose.yml to remote host
+    - name: Copy compose.yml to remote host
       copy:
-        src: docker-compose.yml
-        dest: "{{ lab_dir }}/docker-compose.yml"
+        src: compose.yml
+        dest: "{{ lab_dir }}/compose.yml"
         mode: '0644'
 
     - name: Stop existing containers if running
-      command: docker compose -f {{ lab_dir }}/docker-compose.yml down
+      command: docker compose -f {{ lab_dir }}/compose.yml down
       args:
         chdir: "{{ lab_dir }}"
       ignore_errors: true
       changed_when: false
 
     - name: Pull Docker images
-      command: docker compose -f {{ lab_dir }}/docker-compose.yml pull
+      command: docker compose -f {{ lab_dir }}/compose.yml pull
       args:
         chdir: "{{ lab_dir }}"
       register: pull_result
       changed_when: "'Downloaded newer image' in pull_result.stdout"
 
     - name: Start containers
-      command: docker compose -f {{ lab_dir }}/docker-compose.yml up -d
+      command: docker compose -f {{ lab_dir }}/compose.yml up -d
       args:
         chdir: "{{ lab_dir }}"
       register: start_result
       changed_when: "'Creating' in start_result.stdout or 'Starting' in start_result.stdout"
 
     - name: Show container status
-      command: docker compose -f {{ lab_dir }}/docker-compose.yml ps
+      command: docker compose -f {{ lab_dir }}/compose.yml ps
       args:
         chdir: "{{ lab_dir }}"
       register: container_status
