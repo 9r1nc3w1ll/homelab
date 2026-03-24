@@ -23,6 +23,28 @@ services:
       - "9000:9000"
       - "9443:9443"
 
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    environment:
+      TZ: UTC+1
+      DNS1: 1.1.1.1
+      DNS2: 1.0.0.1
+      # Google DNS fallback option:
+      # DNS1: 8.8.8.8
+      # DNS2: 8.8.4.4
+    volumes:
+      - pihole_config:/etc/pihole
+      - pihole_dnsmasq_config:/etc/dnsmasq.d
+    ports:
+      - "5453:53/tcp"
+      - "5453:53/udp"
+      - "8081:80/tcp"
+      - "8443:443/tcp"
+
 volumes:
   portainer_data:
+  pihole_config:
+  pihole_dnsmasq_config:
 

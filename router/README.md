@@ -1,6 +1,6 @@
-# Home Lab - Home Assistant & Portainer Deployment
+# Home Lab - Home Assistant, Portainer, and Pi-hole Deployment
 
-This Ansible setup deploys Home Assistant and Portainer on a remote OpenWrt device using Docker Compose.
+This Ansible setup deploys Home Assistant, Portainer, and Pi-hole on a remote OpenWrt device using Docker Compose.
 
 ## Prerequisites
 
@@ -66,6 +66,60 @@ After deployment, the following services will be available:
   - HTTPS: `https://YOUR_OPENWRT_IP:9443`
   - First-time setup: Create an admin account when accessing Portainer
 
+- **Pi-hole**: DNS filtering + dashboard (OpenWrt-friendly ports)
+  - DNS listener (host): `5353/tcp` and `5353/udp`
+  - Dashboard HTTP: `http://YOUR_OPENWRT_IP:8081/admin`
+  - Dashboard HTTPS: `https://YOUR_OPENWRT_IP:8443/admin`
+  - Persistent data: Docker named volumes `pihole_config` and `pihole_dnsmasq_config`
+
+## Using Pi-hole with OpenWrt
+
+Pi-hole in this stack is intentionally mapped to non-default host ports to avoid clashing with OpenWrt services:
+
+- OpenWrt `dnsmasq` usually owns host port `53`
+- LuCI/uhttpd usually owns host ports `80` and `443`
+
+Current mappings in `compose.yml`:
+
+- `5353 -> 53` (Pi-hole DNS)
+- `8081 -> 80` (Pi-hole web UI HTTP)
+- `8443 -> 443` (Pi-hole web UI HTTPS)
+
+### Configure OpenWrt to forward DNS to Pi-hole
+
+Keep OpenWrt `dnsmasq` enabled for LAN clients on port `53`, and forward upstream queries to Pi-hole on localhost port `5353`.
+
+UCI example:
+
+```bash
+uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5353'
+uci commit dhcp
+/etc/init.d/dnsmasq restart
+```
+
+Equivalent `/etc/config/dhcp` line:
+
+```text
+list server '127.0.0.1#5353'
+```
+
+### Upstream resolver notes
+
+Pi-hole is configured to use Cloudflare upstream DNS:
+
+- `DNS1=1.1.1.1`
+- `DNS2=1.0.0.1`
+
+Google alternatives are left commented in `compose.yml` for quick switching.
+
+Do not point Pi-hole upstream back to the router IP in this on-router setup, or you can create DNS loops.
+
+### Quick verification
+
+1. Open Pi-hole UI at `http://YOUR_OPENWRT_IP:8081/admin`
+2. Query any domain from a LAN client and confirm responses
+3. Check Pi-hole Query Log to verify requests are passing through Pi-hole
+
 ## Managing Containers
 
 You can manage the containers directly on the OpenWrt device:
@@ -109,4 +163,4 @@ docker compose -f /opt/lab/docker-compose.yml up -d
 
 - **Connection refused**: Check that Docker is running on the OpenWrt device
 - **Permission denied**: Ensure SSH key has proper permissions (`chmod 600 ~/.ssh/id_rsa`)
-- **Port conflicts**: Modify ports in `docker-compose.yml` if ports 9000, 9443, or 8123 are already in use
+- **Port conflicts**: Modify ports in `compose.yml` if ports 9000, 9443, 8123, 5353, 8081, or 8443 are already in use
