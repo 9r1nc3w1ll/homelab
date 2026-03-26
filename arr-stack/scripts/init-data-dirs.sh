@@ -10,12 +10,18 @@ PGID="${PGID:-1000}"
 
 mkdir -p \
   "${BASE}/downloads" \
+  "${BASE}/downloads/movies" \
+  "${BASE}/downloads/tv" \
+  "${BASE}/downloads/music" \
+  "${BASE}/downloads/books" \
+  "${BASE}/downloads/adult" \
   "${BASE}/tv" \
   "${BASE}/movies" \
   "${BASE}/books" \
   "${BASE}/music" \
-  "${BASE}/adult" \
+  "${BASE}/adult/movies" \
   "${BASE}/seerr" \
+  "${BASE}/config/qbittorrent" \
   "${BASE}/config/prowlarr" \
   "${BASE}/config/sonarr" \
   "${BASE}/config/radarr" \
