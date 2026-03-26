@@ -89,6 +89,8 @@ Current mappings in `compose.yml`:
 
 On some OpenWrt firewall configurations (notably with nftables/firewall4 + Docker bridge networking), Docker can publish ports (e.g. `0.0.0.0:8081->80`) but LAN clients may still time out because forwarding from `lan` to the `docker` zone/bridge is not allowed.
 
+For a full write-up of the Docker/OpenWrt firewall failure mode (including the `DOCKER-USER` rule that can break container egress DNS/HTTPS), see `DOCKER_FIREWALL_TROUBLESHOOTING.md`.
+
 If `http://127.0.0.1:8081/admin/` works on the router but `http://YOUR_OPENWRT_IP:8081/admin/` does not from LAN, add a forwarding rule:
 
 ```bash
@@ -103,6 +105,8 @@ uci commit firewall
 ### Configure OpenWrt to forward DNS to Pi-hole
 
 Keep OpenWrt `dnsmasq` enabled for LAN clients on port `53`, and forward upstream queries to Pi-hole on localhost port `5453`.
+
+If you see Pi-hole logging queries for a local record but clients get “No answer” (common with `.home`), see `DNS_TROUBLESHOOTING.md`.
 
 UCI example:
 
