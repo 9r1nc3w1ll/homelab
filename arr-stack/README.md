@@ -1,6 +1,6 @@
 # arr-stack
 
-Docker Compose stack for **torrenting** (qBittorrent; optional **Gluetun** VPN is commented out in Compose), **Servarr** automation (Prowlarr, Sonarr, Radarr, Bazarr), **Jellyfin** playback, **Seerr** requests, and **FlareSolverr** for indexer challenges.
+Docker Compose stack for **torrenting** (qBittorrent; optional **Gluetun** VPN is commented out in Compose), **Servarr** automation (Prowlarr, Sonarr, Radarr, Lidarr, Bazarr), **LazyLibrarian** for book grabs, **Jellyfin** playback, requests (**Seerr**), and **FlareSolverr** for indexer challenges.
 
 ## Prerequisites
 
@@ -21,10 +21,14 @@ Docker Compose stack for **torrenting** (qBittorrent; optional **Gluetun** VPN i
      media/
        tv/
        movies/
+     books/
+     music/
      config/
        prowlarr/
        sonarr/
        radarr/
+       lazylibrarian/
+       lidarr/
        bazarr/
        jellyfin/
      seerr/
@@ -46,6 +50,8 @@ Do **not** commit `.env`; it is listed in the repo root `.gitignore`.
 | Prowlarr       | 9696                      |                                                |
 | Sonarr         | 8989                      |                                                |
 | Radarr         | 7878                      |                                                |
+| LazyLibrarian  | 5299                      | [LinuxServer docs](https://docs.linuxserver.io/images/docker-lazylibrarian/) (`LAZYLIBRARIAN_PORT`). |
+| Lidarr         | 8686                      |                                                |
 | Bazarr         | 6767                      |                                                |
 | Jellyfin       | 8096 (HTTP), 8920 (HTTPS) | Add libraries under `/data` (see below).       |
 | Seerr          | 5055                      | [Documentation](https://docs.seerr.dev/)       |
@@ -56,14 +62,16 @@ Torrent traffic uses **UDP/TCP** on `TORRENT_PORT` (default **6881**), published
 
 ## Data layout and hardlinks
 
-`downloads` and `media` should live on the **same filesystem** on the host so Sonarr/Radarr can **hardlink** from completed downloads into library folders instead of copying.
+`downloads` and library folders should live on the **same filesystem** on the host so Sonarr/Radarr can **hardlink** from completed downloads into library folders instead of copying. The same applies to any other library app in Compose (see volume mounts there).
 
 Inside containers:
 
 - **Sonarr:** `/tv`, `/downloads`
 - **Radarr:** `/movies`, `/downloads`
+- **LazyLibrarian:** `/books`, `/downloads`, `/config`
+- **Lidarr:** `/music`, `/downloads`
 - **qBittorrent:** `/downloads`
-- **Jellyfin:** `/config`, `/data` (host `data/media` → `/data`; use e.g. `/data/tv` and `/data/movies` as library paths in the UI)
+- **Jellyfin:** `/config`, `/data` (entire `DATA_ROOT` is mounted at `/data`; add libraries for paths that match your `DATA_ROOT` layout and any extra volume mounts in Compose)
 
 ## Jellyfin hardware transcoding (AMD / GMKtec-style mini PC)
 
@@ -87,15 +95,17 @@ For HDR **tone-mapping** extras on AMD, see LinuxServer **Docker Mods** for Jell
 
 ## App wiring
 
-- **Sonarr / Radarr → download client:** host `**qbittorrent**`, port **8080**, URL `http://qbittorrent:8080` (matches `WEBUI_PORT` in Compose). If you re-enable Gluetun and put qBittorrent behind it again, use host `**gluetun**` and `http://gluetun:8080` instead.
+- **Sonarr / Radarr (and other apps in this Compose file) → download client:** host `**qbittorrent**`, port **8080**, URL `http://qbittorrent:8080` (matches `WEBUI_PORT` in Compose). If you re-enable Gluetun and put qBittorrent behind it again, use host `**gluetun**` and `http://gluetun:8080` instead.
 - **Prowlarr → FlareSolverr:** set FlareSolverr’s URL in Prowlarr to your FlareSolverr instance (host `**flaresolverr`**, port from `FLARESOLVERR_PORT`; follow current Prowlarr/FlareSolverr docs for path and tags).
-- **Prowlarr → Sonarr/Radarr:** configure app sync in Prowlarr after each service is up.
+- **Prowlarr → connected apps:** configure app sync in Prowlarr after each service is up. **LazyLibrarian** has no Prowlarr “app” sync; add **Torznab/Newznab** indexer URLs from Prowlarr in the LazyLibrarian UI instead.
 - **Seerr:** connect to Jellyfin (and Sonarr/Radarr as needed) in the Seerr UI.
 
 ## Security
 
 - Keep UIs on your **LAN** or behind a **reverse proxy** with authentication and TLS if exposed beyond the home network.
 - VPN credentials belong only in `.env` on the server, not in git.
+- LinuxServer `sonarr`, `radarr`, `prowlarr`, `bazarr`, and `lazylibrarian` containers do not provide supported env vars to set first-run UI username/password.
+- LinuxServer `qbittorrent` also does not provide env vars for default WebUI credentials; it prints a temporary `admin` password in container logs on startup until you set persistent credentials in the app.
 
 ## References
 
@@ -103,4 +113,5 @@ For HDR **tone-mapping** extras on AMD, see LinuxServer **Docker Mods** for Jell
 - [Servarr Docker](https://wiki.servarr.com/docker)
 - [Seerr](https://docs.seerr.dev/)
 - [LinuxServer.io](https://docs.linuxserver.io/)
+- [LazyLibrarian](https://lazylibrarian.gitlab.io/)
 

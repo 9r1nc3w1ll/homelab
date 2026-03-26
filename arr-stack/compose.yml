@@ -2,11 +2,38 @@ name: arr-stack
 
 # Run from this directory: docker compose up -d
 # Copy .env.example to .env and set paths. qBittorrent Web UI is on ${QBIT_WEBUI_PORT:-8080}.
-# Download client URL in Sonarr/Radarr: http://qbittorrent:8080 (same port as WEBUI_PORT below).
+# Download client URL in Sonarr/Radarr and other apps: http://qbittorrent:8080 (same port as WEBUI_PORT below).
 # Gluetun (VPN) is temporarily disabled; uncomment the gluetun service and switch qbittorrent
 # back to network_mode: service:gluetun + depends_on: gluetun, remove qbittorrent ports/networks.
 
+x-common-env: &common-env
+  PUID: ${PUID}
+  PGID: ${PGID}
+  TZ: ${TZ}
+  UMASK: "002"
+
+x-tz-env: &tz-env
+  TZ: ${TZ}
+
+x-depends-on-init: &depends-on-init
+  init-dirs:
+    condition: service_completed_successfully
+
 services:
+  # Creates DATA_ROOT paths from scripts/init-data-dirs.sh, then exits. Other services
+  # wait via depends_on (service_completed_successfully). Manual re-run: docker compose run --rm init-dirs
+  init-dirs:
+    image: busybox:1.36
+    container_name: arr-init-dirs
+    restart: "no"
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+    volumes:
+      - ${DATA_ROOT:-./data}:/data
+      - ./scripts/init-data-dirs.sh:/init.sh:ro
+    entrypoint: ["/bin/sh", "/init.sh"]
+
   # gluetun:
   #   image: qmcgaw/gluetun:latest
   #   container_name: arr-gluetun
@@ -27,15 +54,16 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: arr-qbittorrent
+    depends_on:
+      <<: *depends-on-init
     # network_mode: service:gluetun
     # depends_on:
-    #   - gluetun
+    #   <<: *depends-on-init
+    #   gluetun:
+    #     condition: service_started
     environment:
-      PUID: ${PUID}
-      PGID: ${PGID}
-      TZ: ${TZ}
+      <<: *common-env
       WEBUI_PORT: "8080"
-      UMASK: "002"
     volumes:
       - ${DATA_ROOT:-./data}/downloads:/downloads
     ports:
@@ -49,11 +77,10 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: arr-prowlarr
+    depends_on:
+      <<: *depends-on-init
     environment:
-      PUID: ${PUID}
-      PGID: ${PGID}
-      TZ: ${TZ}
-      UMASK: "002"
+      <<: *common-env
     volumes:
       - ${DATA_ROOT:-./data}/config/prowlarr:/config
     ports:
@@ -65,16 +92,14 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: arr-sonarr
+    depends_on:
+      <<: *depends-on-init
     environment:
-      PUID: ${PUID}
-      PGID: ${PGID}
-      TZ: ${TZ}
-      UMASK: "002"
+      <<: *common-env
     volumes:
       - ${DATA_ROOT:-./data}/config/sonarr:/config
       - ${DATA_ROOT:-./data}/tv:/tv
       - ${DATA_ROOT:-./data}/downloads:/downloads
-      - ${OLD_DATA_ROOT}:/data/old-media
     ports:
       - "${SONARR_PORT:-8989}:8989"
     networks:
@@ -84,18 +109,67 @@ services:
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: arr-radarr
+    depends_on:
+      <<: *depends-on-init
     environment:
-      PUID: ${PUID}
-      PGID: ${PGID}
-      TZ: ${TZ}
-      UMASK: "002"
+      <<: *common-env
     volumes:
       - ${DATA_ROOT:-./data}/config/radarr:/config
       - ${DATA_ROOT:-./data}/movies:/movies
       - ${DATA_ROOT:-./data}/downloads:/downloads
-      - ${OLD_DATA_ROOT}:/data/old-media
     ports:
       - "${RADARR_PORT:-7878}:7878"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  lazylibrarian:
+    image: lscr.io/linuxserver/lazylibrarian:latest
+    container_name: arr-lazylibrarian
+    depends_on:
+      <<: *depends-on-init
+    environment:
+      <<: *common-env
+    volumes:
+      - ${DATA_ROOT:-./data}/config/lazylibrarian:/config
+      - ${DATA_ROOT:-./data}/downloads:/downloads
+      - ${DATA_ROOT:-./data}/books:/books
+    ports:
+      - "${LAZYLIBRARIAN_PORT:-5299}:5299"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: arr-lidarr
+    depends_on:
+      <<: *depends-on-init
+    environment:
+      <<: *common-env
+    volumes:
+      - ${DATA_ROOT:-./data}/config/lidarr:/config
+      - ${DATA_ROOT:-./data}/music:/music
+      - ${DATA_ROOT:-./data}/downloads:/downloads
+    ports:
+      - "${LIDARR_PORT:-8686}:8686"
+    networks:
+      - arr_net
+    restart: unless-stopped
+
+  whisparr:
+    image: ghcr.io/thespad/whisparr:latest
+    container_name: arr-whisparr
+    depends_on:
+      <<: *depends-on-init
+    environment:
+      <<: *common-env
+    volumes:
+      - ${DATA_ROOT:-./data}/config/whisparr:/config
+      - ${DATA_ROOT:-./data}/downloads:/downloads
+      - ${DATA_ROOT:-./data}/adult:/adult
+    ports:
+      - "${WHISPARR_PORT:-6969}:6969"
     networks:
       - arr_net
     restart: unless-stopped
@@ -103,11 +177,10 @@ services:
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: arr-bazarr
+    depends_on:
+      <<: *depends-on-init
     environment:
-      PUID: ${PUID}
-      PGID: ${PGID}
-      TZ: ${TZ}
-      UMASK: "002"
+      <<: *common-env
     volumes:
       - ${DATA_ROOT:-./data}/config/bazarr:/config
       - ${DATA_ROOT:-./data}/movies:/movies
@@ -121,11 +194,10 @@ services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: arr-jellyfin
+    depends_on:
+      <<: *depends-on-init
     environment:
-      PUID: ${PUID}
-      PGID: ${PGID}
-      TZ: ${TZ}
-      UMASK: "002"
+      <<: *common-env
     devices:
       - /dev/dri:/dev/dri
     group_add:
@@ -145,8 +217,10 @@ services:
     image: ghcr.io/seerr-team/seerr:latest
     container_name: arr-seerr
     init: true
+    depends_on:
+      <<: *depends-on-init
     environment:
-      TZ: ${TZ}
+      <<: *tz-env
       LOG_LEVEL: ${SEERR_LOG_LEVEL:-info}
     volumes:
       - ${DATA_ROOT:-./data}/seerr:/app/config
@@ -159,8 +233,10 @@ services:
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: arr-flaresolverr
+    depends_on:
+      <<: *depends-on-init
     environment:
-      TZ: ${TZ}
+      <<: *tz-env
       LOG_LEVEL: ${FLARESOLVERR_LOG_LEVEL:-info}
     ports:
       - "${FLARESOLVERR_PORT:-8191}:8191"

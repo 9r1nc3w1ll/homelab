@@ -50,6 +50,22 @@
         dest: "{{ lab_dir }}/compose.yml"
         mode: '0644'
 
+    - name: Ensure OpenWrt firewall allows LAN to reach Docker-published ports
+      shell: |
+        set -e
+        if uci show firewall | grep -q "=forwarding" && uci show firewall | grep -q "\.src='lan'" && uci show firewall | grep -q "\.dest='docker'"; then
+          exit 0
+        fi
+        sec=$(uci add firewall forwarding)
+        uci set firewall.${sec}.name='lan_to_docker'
+        uci set firewall.${sec}.src='lan'
+        uci set firewall.${sec}.dest='docker'
+        uci commit firewall
+        /etc/init.d/firewall reload
+      args:
+        executable: /bin/sh
+      changed_when: true
+
     - name: Stop existing containers if running
       command: docker compose -f {{ lab_dir }}/compose.yml down
       args:

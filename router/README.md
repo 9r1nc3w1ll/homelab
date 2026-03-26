@@ -67,7 +67,7 @@ After deployment, the following services will be available:
   - First-time setup: Create an admin account when accessing Portainer
 
 - **Pi-hole**: DNS filtering + dashboard (OpenWrt-friendly ports)
-  - DNS listener (host): `5353/tcp` and `5353/udp`
+  - DNS listener (host): `5453/tcp` and `5453/udp`
   - Dashboard HTTP: `http://YOUR_OPENWRT_IP:8081/admin`
   - Dashboard HTTPS: `https://YOUR_OPENWRT_IP:8443/admin`
   - Persistent data: Docker named volumes `pihole_config` and `pihole_dnsmasq_config`
@@ -81,18 +81,33 @@ Pi-hole in this stack is intentionally mapped to non-default host ports to avoid
 
 Current mappings in `compose.yml`:
 
-- `5353 -> 53` (Pi-hole DNS)
+- `5453 -> 53` (Pi-hole DNS)
 - `8081 -> 80` (Pi-hole web UI HTTP)
 - `8443 -> 443` (Pi-hole web UI HTTPS)
 
+### OpenWrt firewall note (LAN access to Docker-published ports)
+
+On some OpenWrt firewall configurations (notably with nftables/firewall4 + Docker bridge networking), Docker can publish ports (e.g. `0.0.0.0:8081->80`) but LAN clients may still time out because forwarding from `lan` to the `docker` zone/bridge is not allowed.
+
+If `http://127.0.0.1:8081/admin/` works on the router but `http://YOUR_OPENWRT_IP:8081/admin/` does not from LAN, add a forwarding rule:
+
+```bash
+sec=$(uci add firewall forwarding)
+uci set firewall.${sec}.name='lan_to_docker'
+uci set firewall.${sec}.src='lan'
+uci set firewall.${sec}.dest='docker'
+uci commit firewall
+/etc/init.d/firewall reload
+```
+
 ### Configure OpenWrt to forward DNS to Pi-hole
 
-Keep OpenWrt `dnsmasq` enabled for LAN clients on port `53`, and forward upstream queries to Pi-hole on localhost port `5353`.
+Keep OpenWrt `dnsmasq` enabled for LAN clients on port `53`, and forward upstream queries to Pi-hole on localhost port `5453`.
 
 UCI example:
 
 ```bash
-uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5353'
+uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5453'
 uci commit dhcp
 /etc/init.d/dnsmasq restart
 ```
@@ -100,17 +115,15 @@ uci commit dhcp
 Equivalent `/etc/config/dhcp` line:
 
 ```text
-list server '127.0.0.1#5353'
+list server '127.0.0.1#5453'
 ```
 
 ### Upstream resolver notes
+Pi-hole is configured to use Cloudflare upstream DNS via:
 
-Pi-hole is configured to use Cloudflare upstream DNS:
+- `FTLCONF_dns_upstreams: '1.1.1.1;1.0.0.1'`
 
-- `DNS1=1.1.1.1`
-- `DNS2=1.0.0.1`
-
-Google alternatives are left commented in `compose.yml` for quick switching.
+Google alternatives are left commented in `compose.yml` for quick switching. If you change these values after Pi-hole has already initialized its volumes, you must recreate the container for the new upstreams to take effect.
 
 Do not point Pi-hole upstream back to the router IP in this on-router setup, or you can create DNS loops.
 
@@ -158,9 +171,3 @@ Or manually on the device:
 docker compose -f /opt/lab/docker-compose.yml pull
 docker compose -f /opt/lab/docker-compose.yml up -d
 ```
-
-## Troubleshooting
-
-- **Connection refused**: Check that Docker is running on the OpenWrt device
-- **Permission denied**: Ensure SSH key has proper permissions (`chmod 600 ~/.ssh/id_rsa`)
-- **Port conflicts**: Modify ports in `compose.yml` if ports 9000, 9443, 8123, 5353, 8081, or 8443 are already in use

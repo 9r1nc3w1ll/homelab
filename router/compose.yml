@@ -10,30 +10,32 @@ services:
     environment:
       - TZ=UTC+1
 
-  portainer:
-    container_name: portainer
-    image: portainer/portainer-ce:latest
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    volumes:
-      - portainer_data:/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-      - "9000:9000"
-      - "9443:9443"
+  # portainer:
+  #   container_name: portainer
+  #   image: portainer/portainer-ce:latest
+  #   restart: unless-stopped
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   volumes:
+  #     - portainer_data:/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   ports:
+  #     - "9000:9000"
+  #     - "9443:9443"
 
   pihole:
     image: pihole/pihole:latest
     container_name: pihole
     restart: unless-stopped
+    network_mode: bridge
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
     environment:
       TZ: UTC+1
-      DNS1: 1.1.1.1
-      DNS2: 1.0.0.1
-      # Google DNS fallback option:
-      # DNS1: 8.8.8.8
-      # DNS2: 8.8.4.4
+      FTLCONF_dns_upstreams: '1.1.1.1;1.0.0.1'
+      # Google upstreams fallback option:
+      # FTLCONF_dns_upstreams: '8.8.8.8;8.8.4.4'
     volumes:
       - pihole_config:/etc/pihole
       - pihole_dnsmasq_config:/etc/dnsmasq.d
@@ -44,7 +46,7 @@ services:
       - "8443:443/tcp"
 
 volumes:
-  portainer_data:
+  # portainer_data:
   pihole_config:
   pihole_dnsmasq_config:
 
