@@ -65,7 +65,7 @@ services:
       <<: *common-env
       WEBUI_PORT: "8080"
     volumes:
-      - ${DATA_ROOT:-./data}/config/qbittorrent:/config
+      - ${CONFIG_ROOT:-./config}/qbittorrent:/config
       - ${DATA_ROOT:-./data}/downloads:/downloads
     ports:
       - "${QBIT_WEBUI_PORT:-8080}:8080/tcp"
@@ -83,7 +83,7 @@ services:
     environment:
       <<: *common-env
     volumes:
-      - ${DATA_ROOT:-./data}/config/prowlarr:/config
+      - ${CONFIG_ROOT:-./config}/prowlarr:/config
     ports:
       - "${PROWLARR_PORT:-9696}:9696"
     networks:
@@ -98,7 +98,7 @@ services:
     environment:
       <<: *common-env
     volumes:
-      - ${DATA_ROOT:-./data}/config/sonarr:/config
+      - ${CONFIG_ROOT:-./config}/sonarr:/config
       - ${DATA_ROOT:-./data}/tv:/tv
       - ${DATA_ROOT:-./data}/downloads:/downloads
     ports:
@@ -115,7 +115,7 @@ services:
     environment:
       <<: *common-env
     volumes:
-      - ${DATA_ROOT:-./data}/config/radarr:/config
+      - ${CONFIG_ROOT:-./config}/radarr:/config
       - ${DATA_ROOT:-./data}/movies:/movies
       - ${DATA_ROOT:-./data}/downloads:/downloads
     ports:
@@ -132,7 +132,7 @@ services:
     environment:
       <<: *common-env
     volumes:
-      - ${DATA_ROOT:-./data}/config/lazylibrarian:/config
+      - ${CONFIG_ROOT:-./config}/lazylibrarian:/config
       - ${DATA_ROOT:-./data}/downloads:/downloads
       - ${DATA_ROOT:-./data}/books:/books
     ports:
@@ -149,7 +149,7 @@ services:
     environment:
       <<: *common-env
     volumes:
-      - ${DATA_ROOT:-./data}/config/lidarr:/config
+      - ${CONFIG_ROOT:-./config}/lidarr:/config
       - ${DATA_ROOT:-./data}/music:/music
       - ${DATA_ROOT:-./data}/downloads:/downloads
     ports:
@@ -166,7 +166,7 @@ services:
     environment:
       <<: *common-env
     volumes:
-      - ${DATA_ROOT:-./data}/config/whisparr:/config
+      - ${CONFIG_ROOT:-./config}/whisparr:/config
       - ${DATA_ROOT:-./data}/downloads:/downloads
       - ${DATA_ROOT:-./data}/adult:/adult
     ports:
@@ -183,7 +183,7 @@ services:
     environment:
       <<: *common-env
     volumes:
-      - ${DATA_ROOT:-./data}/config/bazarr:/config
+      - ${CONFIG_ROOT:-./config}/bazarr:/config
       - ${DATA_ROOT:-./data}/movies:/movies
       - ${DATA_ROOT:-./data}/tv:/tv
     ports:
@@ -205,7 +205,7 @@ services:
       - video
       - 105 # - render
     volumes:
-      - ${DATA_ROOT:-./data}/config/jellyfin:/config
+      - ${CONFIG_ROOT:-./config}/jellyfin:/config
       - ${DATA_ROOT:-./data}:/data
     ports:
       - "${JELLYFIN_HTTP:-8096}:8096"
@@ -224,7 +224,7 @@ services:
       <<: *tz-env
       LOG_LEVEL: ${SEERR_LOG_LEVEL:-info}
     volumes:
-      - ${DATA_ROOT:-./data}/seerr:/app/config
+      - ${CONFIG_ROOT:-./config}/seerr:/app/config
     ports:
       - "${SEERR_PORT:-5055}:5055"
     networks:
